@@ -5,7 +5,7 @@ import plotly.express as px
 import requests
 import streamlit as st
 
-# --- CONFIGURATION DE LA PAGE (MODE PLEINE PAGE) ---
+# --- CONFIGURATION DE LA PAGE (MONO-PAGE) ---
 st.set_page_config(
     page_title="Portfolio Pilot PEA", page_icon="📈", layout="wide"
 )
@@ -119,16 +119,7 @@ def load_data():
 
 portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
 
-
-# Fonction pour colorer les valeurs financières en vert/rouge
-def color_green_red(val):
-  if isinstance(val, (int, float)):
-    color = "color: #2ea043;" if val >= 0 else "color: #da3633;"
-    return color
-  return ""
-
-
-# --- APPLICATION MONO-PAGE ---
+# --- INTERFACE MONO-PAGE ---
 st.title("🚀 Portfolio Pilot PEA")
 st.markdown("Vue d'ensemble centralisée de vos investissements.")
 
@@ -175,18 +166,7 @@ st.markdown("---")
 # ==========================================
 st.subheader("💼 Lignes Actives & Performance")
 if not portefeuille_df.empty:
-  # Application du style vert/rouge si les colonnes existent
-  styled_portefeuille = portefeuille_df.style.applymap(
-      color_green_red,
-      subset=[
-          col
-          for col in portefeuille_df.columns
-          if any(
-              k in col.lower() for k in ["value", "gain", "perf", "plus"]
-          )
-      ],
-  )
-  st.dataframe(styled_portefeuille, use_container_width=True, hide_index=True)
+  st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -277,15 +257,7 @@ st.markdown("---")
 # ==========================================
 st.subheader("📜 Historique Complet des Ordres")
 if not ordres_df.empty:
-  styled_ordres = ordres_df.style.applymap(
-      color_green_red,
-      subset=[
-          col
-          for col in ordres_df.columns
-          if any(k in col.lower() for k in ["value", "gain", "perf", "plus"])
-      ],
-  )
-  st.dataframe(styled_ordres, use_container_width=True, hide_index=True)
+  st.dataframe(ordres_df, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucun ordre enregistré.")
     
