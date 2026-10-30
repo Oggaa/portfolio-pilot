@@ -66,7 +66,7 @@ def load_data():
         "Titre": ["EPA:AI", "EPA:EWLD", "EPA:FDJU", "EPA:RNO", "EPA:STLAP"],
         "Montant brut": [1809.00, 501.48, 490.82, 470.05, 451.26],
         "Plus/Moins-value (€)": [122.98, 18.51, -5.28, -21.62, -48.39],
-        "Performance (%)": [7.4, 3.9, -1.1, -4.4, -9.8],
+        "Performance (%)": ["+7,4%", "+3,9%", "-1,1%", "-4,4%", "-9,8%"],
     })
 
   try:
@@ -132,12 +132,13 @@ st.markdown("---")
 # ==========================================
 # 1. DASHBOARD & MÉTRIQUES
 # ==========================================
-st.subheader("📊 Vue d'ensemble du Capital")
+st.subheader("📊 1. Vue d'ensemble du Capital")
 col1, col2, col3 = st.columns(3)
 with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
   st.metric(label="Évaluation Titres", value="3 722,61 €", delta="+66,20 €")
+  st.caption("Performance globale : +1,78%")  # Pourcentage en petit dessous
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
@@ -162,11 +163,16 @@ with col_g2:
 st.markdown("---")
 
 # ==========================================
-# 2. PORTEFEUILLE & VERSEMENTS
+# 2. LIGNES ACTIVES & PERFORMANCE
 # ==========================================
-st.subheader("💼 Lignes Actives & Performance")
+st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
   st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
+  # Ajout des indications de performance en petit dessous pour chaque ligne active
+  for index, row in portefeuille_df.iterrows():
+    titre = row.get("Titre", "Actif")
+    perf = row.get("Performance (%)", "N/C")
+    st.caption(f"🔹 **{titre}** — Performance enregistrée : `{perf}`")
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -179,9 +185,9 @@ else:
 st.markdown("---")
 
 # ==========================================
-# 3. SAISIR UN ACHAT / VENTE (FRAIS FORTENEO)
+# 3. ENREGISTREMENT D'UNE TRANSACTION (FORTENEO STARTER)
 # ==========================================
-st.subheader("➕ Enregistrement d'une Transaction (Fortuneo Starter)")
+st.subheader("➕ 3. Enregistrement d'une Transaction (Fortuneo Starter)")
 
 tab1, tab2 = st.tabs(["🛒 Nouvel Achat", "📤 Vente de Titre"])
 
@@ -255,7 +261,7 @@ st.markdown("---")
 # ==========================================
 # 4. HISTORIQUE DES ORDRES
 # ==========================================
-st.subheader("📜 Historique Complet des Ordres")
+st.subheader("📜 4. Historique Complet des Ordres")
 if not ordres_df.empty:
   st.dataframe(ordres_df, use_container_width=True, hide_index=True)
 else:
