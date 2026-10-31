@@ -12,13 +12,15 @@ import streamlit as st
 # CONFIGURATION
 # ============================================================
 st.set_page_config(
-    st.title("TEST PORTFOLIO PILOT")
-    st.success("Le script Streamlit démarre correctement.")
     page_title="Gestion PEA",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+# TEST TEMPORAIRE
+st.title("TEST PORTFOLIO PILOT")
+st.success("Le script Streamlit démarre correctement.")
 
 SPREADSHEET_ID = "15ou0TCePSKfcbIuivkaGhq8voPzjR3ZudV0sARYwNjE"
 EXPORT_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=xlsx"
