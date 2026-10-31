@@ -12,6 +12,8 @@ import streamlit as st
 # CONFIGURATION
 # ============================================================
 st.set_page_config(
+    st.title("TEST PORTFOLIO PILOT")
+    st.success("Le script Streamlit démarre correctement.")
     page_title="Gestion PEA",
     page_icon="📈",
     layout="wide",
