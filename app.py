@@ -1,354 +1,127 @@
-import io
-import sqlite3
-import pandas as pd
-import plotly.express as px
-import requests
-import streamlit as st
+        markers=True,
+        title="Valorisation du portefeuille et cumul des versements",
+        color_discrete_map={"Valorisation": "#2E86DE", "Total versé": "#16A085"},
+    )
+    fig_historique.update_layout(
+        hovermode="x unified",
+        legend_title_text="",
+        margin=dict(l=10, r=10, t=55, b=10),
+        yaxis_tickformat=".0f",
+    )
+    st.plotly_chart(fig_historique, use_container_width=True)
+    st.caption("Historique repris des colonnes Date, Portefeuille et Total versé de l'onglet « Porte feuille ».")
+else:
+    st.info("Aucune donnée historique exploitable n'a été trouvée dans l'onglet « Porte feuille ».")
 
-# --- CONFIGURATION DE LA PAGE (MONO-PAGE) ---
-st.set_page_config(page_title="Gestion PEA", page_icon="📈", layout="wide")
+# ============================================================
+# POSITIONS ACTUELLES
+# ============================================================
+st.divider()
+st.subheader("💼 3. Positions actuellement détenues")
+if not positions_df.empty:
+    total_valo_positions = positions_df["Valorisation"].sum()
+    positions_affichage = positions_df.copy()
+    positions_affichage["Quantité"] = positions_affichage["Quantité"].map(lambda x: f"{x:g}")
+    for col in ["Cours", "Valorisation", "Coût d'achat", "Gain latent"]:
+        positions_affichage[col] = positions_affichage[col].map(euro)
+    positions_affichage["Performance"] = positions_affichage["Performance"].map(pourcentage)
+    positions_affichage["Poids"] = positions_df["Valorisation"].apply(
+        lambda x: pourcentage(x / total_valo_positions) if total_valo_positions else "—"
+    )
+    st.dataframe(
+        positions_affichage[["Titre", "Type", "Quantité", "Cours", "Valorisation", "Coût d'achat", "Gain latent", "Performance", "Poids"]],
+        use_container_width=True,
+        hide_index=True,
+    )
 
-SPREADSHEET_ID = "15ou0TCePSKfcbIuivkaGhq8voPzjR3ZudV0sARYwNjE"
-DB_NAME = "portfolio.db"
-
-
-# --- FONCTION DE CALCUL DES FRAIS FORTENEO STARTER ---
-def calculer_frais_fortuneo(montant_brut, ordre_gratuit):
-  if ordre_gratuit:
-    return 0.0
-  if montant_brut <= 500:
-    return 0.35
-  else:
-    return round(montant_brut * 0.005, 2)
-
-
-# --- CHARGEMENT DES DONNÉES ---
-@st.cache_data(ttl=300)
-def load_data():
-  conn = sqlite3.connect(DB_NAME)
-  export_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=xlsx"
-
-  tables_detectees = []
-  try:
-    response = requests.get(export_url)
-    if response.status_code == 200:
-      excel_data = io.BytesIO(response.content)
-      xls = pd.ExcelFile(excel_data)
-      for sheet_name in xls.sheet_names:
-        df = pd.read_excel(xls, sheet_name=sheet_name)
-        df = df.dropna(how="all").dropna(axis=1, how="all")
-        t_name = (
-            sheet_name.strip()
-            .lower()
-            .replace(" ", "_")
-            .replace("é", "e")
-            .replace("è", "e")
+    col_repartition, col_performance = st.columns(2)
+    with col_repartition:
+        st.markdown("#### ⚖️ Répartition par titre")
+        fig_repartition = px.pie(
+            positions_df,
+            names="Titre",
+            values="Valorisation",
+            hole=0.48,
         )
-        df.to_sql(t_name, conn, if_exists="replace", index=False)
-  except Exception:
-    pass
-
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE"
-      " 'sqlite_%';"
-  )
-  tables_detectees = [row[0] for row in cursor.fetchall()]
-
-  try:
-    portefeuille = pd.read_sql("SELECT * FROM portefeuille", conn)
-    if portefeuille.empty:
-      raise Exception
-  except Exception:
-    portefeuille = pd.DataFrame({
-        "Titre": ["EPA:AI", "EPA:EWLD", "EPA:FDJU", "EPA:RNO", "EPA:STLAP"],
-        "Montant brut": [
-            "1 809,00 €",
-            "501,48 €",
-            "490,82 €",
-            "470,05 €",
-            "451,26 €",
-        ],
-        "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
-        "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
-        "Plus-value (€)": [
-            '<span style="color: #2ea043; font-weight: bold;">+122,98 €</span>',
-            '<span style="color: #2ea043; font-weight: bold;">+18,51 €</span>',
-            '<span style="color: #da3633; font-weight: bold;">-5,28 €</span>',
-            '<span style="color: #da3633; font-weight: bold;">-21,62 €</span>',
-            '<span style="color: #da3633; font-weight: bold;">-48,39 €</span>',
-        ],
-        "Performance (%)": [
-            '<span style="color: #2ea043; font-weight: bold;">+7,4%</span>',
-            '<span style="color: #2ea043; font-weight: bold;">+3,9%</span>',
-            '<span style="color: #da3633; font-weight: bold;">-1,1%</span>',
-            '<span style="color: #da3633; font-weight: bold;">-4,4%</span>',
-            '<span style="color: #da3633; font-weight: bold;">-9,8%</span>',
-        ],
-    })
-
-  try:
-    versements = pd.read_sql("SELECT * FROM versements", conn)
-    if versements.empty:
-      raise Exception
-  except Exception:
-    versements = pd.DataFrame({
-        "Date": [
-            "10/06/2026",
-            "01/07/2026",
-            "17/07/2026",
-            "18/08/2026",
-            "14/09/2026",
-            "22/09/2026",
-        ],
-        "Versement": ["500 €", "400 €", "500 €", "1 668 €", "500 €", "460 €"],
-    })
-
-  try:
-    ordres = pd.read_sql("SELECT * FROM ordres", conn)
-    if ordres.empty:
-      raise Exception
-  except Exception:
-    ordres = pd.DataFrame({
-        "Date achat": [
-            "15/06/2026",
-            "30/07/2026",
-            "14/09/2026",
-            "02/09/2026",
-            "16/09/2026",
-            "08/07/2026",
-        ],
-        "Titre": [
-            "EPA:EWLD",
-            "EPA:FDJU",
-            "EPA:STLAP",
-            "EPA:RNO",
-            "EPA:AI",
-            "EPA:RNO",
-        ],
-        "Qté": [12, 23, 109, 18, 10, 16],
-        "Plus value": [
-            '<span style="color: #2ea043; font-weight: bold;">+18,51 €</span>',
-            '<span style="color: #da3633; font-weight: bold;">-5,28 €</span>',
-            '<span style="color: #da3633; font-weight: bold;">-48,39 €</span>',
-            '<span style="color: #2ea043; font-weight: bold;">+37,70 €</span>',
-            '<span style="color: #2ea043; font-weight: bold;">+122,98 €</span>',
-            '<span style="color: #2ea043; font-weight: bold;">+65,09 €</span>',
-        ],
-        "Etat": ["Acheté", "Acheté", "Acheté", "Vendu", "Acheté", "Vendu"],
-    })
-
-  conn.close()
-  return portefeuille, versements, ordres, tables_detectees
-
-
-portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
-
-
-# --- INTERFACE MONO-PAGE ---
-st.title("🚀 Gestion PEA")
-st.markdown("Vue d'ensemble centralisée de vos investissements.")
-
-if st.button("🔄 Synchroniser avec le Google Sheet"):
-  st.cache_data.clear()
-  st.rerun()
-
-st.markdown("---")
-
-# ==========================================
-# 1. DASHBOARD & MÉTRIQUES
-# ==========================================
-st.subheader("📊 1. Vue d'ensemble du Capital")
-col1, col2, col3 = st.columns(3)
-with col1:
-  st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
-with col2:
-  st.metric(label="Évaluation Titres", value="3 722,61 €")
-  # 2 info-bulles séparées et distinctes pour les € et les % sans troncature
-  sub1, sub2 = st.columns(2)
-  with sub1:
-    st.markdown(
-        """
-        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
-            <span style="font-size: 11px; color: #8b949e; display: block;">Plus-value</span>
-            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+66,20 €</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-  with sub2:
-    st.markdown(
-        """
-        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
-            <span style="font-size: 11px; color: #8b949e; display: block;">Performance</span>
-            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+1,78%</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-with col3:
-  st.metric(label="Liquidités Disponibles", value="502,32 €")
-
-st.markdown("---")
-
-# ==========================================
-# 2. LIGNES ACTIVES & PERFORMANCE
-# ==========================================
-st.subheader("💼 2. Lignes Actives & Performance")
-if not portefeuille_df.empty:
-  st.write(
-      portefeuille_df.to_html(escape=False, index=False),
-      unsafe_allow_html=True,
-  )
+        fig_repartition.update_traces(textposition="inside", textinfo="percent+label")
+        fig_repartition.update_layout(showlegend=False, margin=dict(l=5, r=5, t=15, b=5))
+        st.plotly_chart(fig_repartition, use_container_width=True)
+    with col_performance:
+        st.markdown("#### 📊 Répartition stratégique")
+        strategie = positions_df.groupby("Type", as_index=False)["Valorisation"].sum()
+        fig_strategie = px.pie(strategie, names="Type", values="Valorisation", hole=0.48)
+        fig_strategie.update_traces(textposition="inside", textinfo="percent+label")
+        fig_strategie.update_layout(showlegend=False, margin=dict(l=5, r=5, t=15, b=5))
+        st.plotly_chart(fig_strategie, use_container_width=True)
 else:
-  st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
+    st.info("Aucune position avec l'état « Acheté » n'a été trouvée dans l'onglet « Ordres ».")
 
-st.markdown("### 💰 Suivi des Versements")
+# ============================================================
+# VERSEMENTS
+# ============================================================
+st.divider()
+st.subheader("💰 4. Historique des versements")
 if not versements_df.empty:
-  st.dataframe(versements_df, use_container_width=True, hide_index=True)
+    colonnes_disponibles = [c for c in ["Date", "Versement", "Versement (€)"] if c in versements_df.columns]
+    tableau_versements = versements_df[colonnes_disponibles].copy()
+    if "Date" in tableau_versements.columns:
+        tableau_versements["Date"] = pd.to_datetime(tableau_versements["Date"], errors="coerce").dt.strftime("%d/%m/%Y")
+    if "Versement (€)" in tableau_versements.columns:
+        tableau_versements["Versement (€)"] = tableau_versements["Versement (€)"].map(euro)
+    st.dataframe(tableau_versements, use_container_width=True, hide_index=True)
 else:
-  st.info("Aucun versement enregistré.")
+    st.info("Aucun versement enregistré dans l'onglet « Versements ».")
 
-st.markdown("---")
-
-# ==========================================
-# 3. ENREGISTREMENT D'UNE TRANSACTION OU VERSEMENT
-# ==========================================
-st.subheader("➕ 3. Enregistrement d'une Transaction (Fortuneo Starter)")
-
-tab1, tab2, tab3 = st.tabs(
-    ["🛒 Nouvel Achat", "📤 Vente de Titre", "💰 Versement Volontaire"]
-)
-
-with tab1:
-  with st.form("form_achat"):
-    col_a, col_b = st.columns(2)
-    with col_a:
-      ticker = st.text_input("Ticker / Code ISIN", placeholder="ex: EPA:AI")
-      quantite = st.number_input(
-          "Quantité", min_value=0.01, value=1.0, step=0.01, key="qte_achat"
-      )
-    with col_b:
-      prix = st.number_input(
-          "Prix d'achat unitaire (€)",
-          min_value=0.01,
-          value=10.0,
-          step=0.1,
-          key="prix_achat",
-      )
-      ordre_gratuit_achat = st.checkbox(
-          "🎁 Utiliser l'ordre gratuit du mois (0 € de frais)",
-          key="gratuit_achat",
-      )
-
-    montant_brut = quantite * prix
-    frais_estimes = calculer_frais_fortuneo(montant_brut, ordre_gratuit_achat)
-    montant_total = montant_brut + frais_estimes
-
-    st.info(
-        f"💡 **Calcul Fortuneo Starter** — Brut : {montant_brut:.2f} € | Frais :"
-        f" **{frais_estimes:.2f} €** | Total débité : **{montant_total:.2f} €**"
-    )
-
-    if st.form_submit_button("Valider l'Achat"):
-      st.success(
-          f"Achat de {quantite} x {ticker} pris en compte avec"
-          f" {frais_estimes:.2f} € de frais."
-      )
-
-with tab2:
-  with st.form("form_vente"):
-    col_c, col_d = st.columns(2)
-    with col_c:
-      ticker_vente = st.text_input("Ticker à revendre", placeholder="ex: EPA:AI")
-      qte_vente = st.number_input(
-          "Quantité à céder", min_value=0.01, value=1.0, step=0.01, key="qte_vente"
-      )
-    with col_d:
-      prix_vente = st.number_input(
-          "Prix de vente unitaire (€)",
-          min_value=0.01,
-          value=10.0,
-          step=0.1,
-          key="prix_vente",
-      )
-      ordre_gratuit_vente = st.checkbox(
-          "🎁 Utiliser l'ordre gratuit pour cette vente (0 € de frais)",
-          key="gratuit_vente",
-      )
-
-    montant_vente_brut = qte_vente * prix_vente
-    frais_vente = calculer_frais_fortuneo(
-        montant_vente_brut, ordre_gratuit_vente
-    )
-    montant_nette = montant_vente_brut - frais_vente
-
-    st.info(
-        f"💡 **Calcul Fortuneo Starter** — Vente brute : {montant_vente_brut:.2f}"
-        f" € | Frais : **{frais_vente:.2f} €** | Net crédité :"
-        f" **{montant_nette:.2f} €**"
-    )
-
-    if st.form_submit_button("Valider la Vente"):
-      st.success(
-          f"Vente de {qte_vente} x {ticker_vente} enregistrée avec"
-          f" {frais_vente:.2f} € de frais."
-      )
-
-with tab3:
-  with st.form("form_versement"):
-    montant_versement = st.number_input(
-        "Montant du versement volontaire (€)",
-        min_value=1.0,
-        value=100.0,
-        step=10.0,
-    )
-    date_versement = st.date_input("Date du versement")
-
-    st.info(
-        f"💰 **Nouveau Versement** — Un montant de **{montant_versement:.2f} €**"
-        f" sera ajouté à vos liquidités."
-    )
-
-    if st.form_submit_button("Valider le Versement"):
-      st.success(
-          f"Versement de {montant_versement:.2f} € enregistré avec succès !"
-          " Pensez à reporter l'information dans votre Google Sheet."
-      )
-
-st.markdown("---")
-
-# ==========================================
-# 4. HISTORIQUE DES ORDRES
-# ==========================================
-st.subheader("📜 4. Historique Complet des Ordres")
+# ============================================================
+# HISTORIQUE DES ORDRES
+# ============================================================
+st.divider()
+st.subheader("📜 5. Historique des ordres")
 if not ordres_df.empty:
-  st.write(
-      ordres_df.to_html(escape=False, index=False), unsafe_allow_html=True
-  )
+    ordres_visibles = ordres_df.copy()
+    ordres_visibles = ordres_visibles.dropna(how="all")
+    if "Titre" in ordres_visibles.columns:
+        ordres_visibles = ordres_visibles[ordres_visibles["Titre"].notna()]
+    if "Date achat" in ordres_visibles.columns:
+        ordres_visibles["Date achat"] = pd.to_datetime(ordres_visibles["Date achat"], errors="coerce").dt.strftime("%d/%m/%Y")
+    if "Date vente" in ordres_visibles.columns:
+        ordres_visibles["Date vente"] = pd.to_datetime(ordres_visibles["Date vente"], errors="coerce").dt.strftime("%d/%m/%Y")
+    colonnes_ordre = [c for c in ["Date achat", "Titre", "Type", "Qté", "Coût total achat", "prix vente", "Plus value", "%", "Date vente", "Etat"] if c in ordres_visibles.columns]
+    st.dataframe(ordres_visibles[colonnes_ordre], use_container_width=True, hide_index=True)
 else:
-  st.warning("Aucun ordre enregistré.")
+    st.info("Aucun ordre n'a été trouvé.")
 
-st.markdown("---")
+# ============================================================
+# SIMULATEURS DE FRAIS - NE MODIFIENT PAS LE GOOGLE SHEET
+# ============================================================
+st.divider()
+st.subheader("🧮 6. Simulateur de frais Fortuneo Starter")
+st.caption("Ces calculateurs servent à estimer les frais. Ils n'enregistrent pas d'ordre dans ton Google Sheet.")
 
-# ==========================================
-# 5. GRAPHIQUES & RÉPARTITION (EN BAS)
-# ==========================================
-st.subheader("📈 5. Analyses & Répartition")
-col_g1, col_g2 = st.columns(2)
-with col_g1:
-  st.markdown("### ⚖️ Répartition Stratégique")
-  fig_pie = px.pie(
-      names=["Passif (ETF / Long Terme)", "Dynamique (Stock Picking)"],
-      values=[2300, 1422],
-      hole=0.4,
-      color_discrete_sequence=["#2ea043", "#1f6feb"],
-  )
-  st.plotly_chart(fig_pie, use_container_width=True)
+onglet_achat, onglet_vente = st.tabs(["🛒 Simulation d'achat", "📤 Simulation de vente"])
+with onglet_achat:
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        qte_achat = st.number_input("Quantité à acheter", min_value=0.01, value=1.0, step=1.0, key="sim_qte_achat")
+    with c2:
+        prix_achat = st.number_input("Prix unitaire (€)", min_value=0.01, value=10.0, step=0.1, key="sim_prix_achat")
+    with c3:
+        gratuit_achat = st.checkbox("Utiliser l'ordre gratuit", key="sim_gratuit_achat")
+    brut_achat = qte_achat * prix_achat
+    frais_achat = calculer_frais_fortuneo(brut_achat, gratuit_achat)
+    st.info(f"Montant brut : **{euro(brut_achat)}**  |  Frais estimés : **{euro(frais_achat)}**  |  Total débité : **{euro(brut_achat + frais_achat)}**")
 
-with col_g2:
-  st.markdown("### 📈 Tendance de la Valorisation")
-  fig_line = px.line(
-      title="Évolution du capital", labels={"x": "Période", "y": "Valeur (€)"}
-  )
-  st.plotly_chart(fig_line, use_container_width=True)
+with onglet_vente:
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        qte_vente = st.number_input("Quantité à vendre", min_value=0.01, value=1.0, step=1.0, key="sim_qte_vente")
+    with c2:
+        prix_vente = st.number_input("Prix unitaire de vente (€)", min_value=0.01, value=10.0, step=0.1, key="sim_prix_vente")
+    with c3:
+        gratuit_vente = st.checkbox("Utiliser l'ordre gratuit", key="sim_gratuit_vente")
+    brut_vente = qte_vente * prix_vente
+    frais_vente = calculer_frais_fortuneo(brut_vente, gratuit_vente)
+    st.info(f"Montant brut : **{euro(brut_vente)}**  |  Frais estimés : **{euro(frais_vente)}**  |  Net crédité : **{euro(brut_vente - frais_vente)}**")
+
+st.divider()
+st.caption("Gestion PEA — données synchronisées depuis Google Sheets. Dernière lecture à la demande ou lors du rafraîchissement automatique du cache (5 min).")
