@@ -164,28 +164,12 @@ with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
   st.metric(label="Évaluation Titres", value="3 722,61 €")
-  # 2 info-bulles séparées et distinctes pour les € et les % sans troncature
+  # Utilisation de métriques natives pour s'aligner parfaitement sur le style "Capital Global"
   sub1, sub2 = st.columns(2)
   with sub1:
-    st.markdown(
-        """
-        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
-            <span style="font-size: 11px; color: #8b949e; display: block;">Plus-value</span>
-            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+66,20 €</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.metric(label="Plus-value", value="+66,20 €", delta="Actif")
   with sub2:
-    st.markdown(
-        """
-        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
-            <span style="font-size: 11px; color: #8b949e; display: block;">Performance</span>
-            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+1,78%</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.metric(label="Performance", value="+1,78%", delta="Actif")
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
