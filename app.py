@@ -71,8 +71,20 @@ def load_data():
         ],
         "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
         "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
-        "Plus-value (€)": ["+122,98 €", "+18,51 €", "-5,28 €", "-21,62 €", "-48,39 €"],
-        "Performance (%)": ["+7,4%", "+3,9%", "-1,1%", "-4,4%", "-9,8%"],
+        "Plus-value (€)": [
+            '<span style="color: #2ea043; font-weight: bold;">+122,98 €</span>',
+            '<span style="color: #2ea043; font-weight: bold;">+18,51 €</span>',
+            '<span style="color: #da3633; font-weight: bold;">-5,28 €</span>',
+            '<span style="color: #da3633; font-weight: bold;">-21,62 €</span>',
+            '<span style="color: #da3633; font-weight: bold;">-48,39 €</span>',
+        ],
+        "Performance (%)": [
+            '<span style="color: #2ea043; font-weight: bold;">+7,4%</span>',
+            '<span style="color: #2ea043; font-weight: bold;">+3,9%</span>',
+            '<span style="color: #da3633; font-weight: bold;">-1,1%</span>',
+            '<span style="color: #da3633; font-weight: bold;">-4,4%</span>',
+            '<span style="color: #da3633; font-weight: bold;">-9,8%</span>',
+        ],
     })
 
   try:
@@ -115,7 +127,14 @@ def load_data():
             "EPA:RNO",
         ],
         "Qté": [12, 23, 109, 18, 10, 16],
-        "Plus value": ["+18,51 €", "-5,28 €", "-48,39 €", "+37,70 €", "+122,98 €", "+65,09 €"],
+        "Plus value": [
+            '<span style="color: #2ea043; font-weight: bold;">+18,51 €</span>',
+            '<span style="color: #da3633; font-weight: bold;">-5,28 €</span>',
+            '<span style="color: #da3633; font-weight: bold;">-48,39 €</span>',
+            '<span style="color: #2ea043; font-weight: bold;">+37,70 €</span>',
+            '<span style="color: #2ea043; font-weight: bold;">+122,98 €</span>',
+            '<span style="color: #2ea043; font-weight: bold;">+65,09 €</span>',
+        ],
         "Etat": ["Acheté", "Acheté", "Acheté", "Vendu", "Acheté", "Vendu"],
     })
 
@@ -145,12 +164,28 @@ with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
   st.metric(label="Évaluation Titres", value="3 722,61 €")
-  # Utilisation de colonnes imbriquées pour séparer proprement les deux deltas en info-bulles
+  # 2 info-bulles séparées et distinctes pour les € et les % sans troncature
   sub1, sub2 = st.columns(2)
   with sub1:
-    st.metric(label="Plus-value", value="+66,20 €", delta="Positif")
+    st.markdown(
+        """
+        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
+            <span style="font-size: 11px; color: #8b949e; display: block;">Plus-value</span>
+            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+66,20 €</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
   with sub2:
-    st.metric(label="Performance", value="+1,78%", delta="Positif")
+    st.markdown(
+        """
+        <div style="background-color: rgba(46, 160, 67, 0.15); border: 1px solid #2ea043; padding: 6px 10px; border-radius: 6px; text-align: center;">
+            <span style="font-size: 11px; color: #8b949e; display: block;">Performance</span>
+            <span style="font-size: 13px; font-weight: bold; color: #2ea043;">+1,78%</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
@@ -161,7 +196,10 @@ st.markdown("---")
 # ==========================================
 st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
-  st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
+  st.write(
+      portefeuille_df.to_html(escape=False, index=False),
+      unsafe_allow_html=True,
+  )
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -285,14 +323,16 @@ st.markdown("---")
 # ==========================================
 st.subheader("📜 4. Historique Complet des Ordres")
 if not ordres_df.empty:
-  st.dataframe(ordres_df, use_container_width=True, hide_index=True)
+  st.write(
+      ordres_df.to_html(escape=False, index=False), unsafe_allow_html=True
+  )
 else:
   st.warning("Aucun ordre enregistré.")
 
 st.markdown("---")
 
 # ==========================================
-# 5. GRAPHIQUES & RÉPARTITION
+# 5. GRAPHIQUES & RÉPARTITION (EN BAS)
 # ==========================================
 st.subheader("📈 5. Analyses & Répartition")
 col_g1, col_g2 = st.columns(2)
