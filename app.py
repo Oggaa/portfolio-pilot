@@ -6,9 +6,7 @@ import requests
 import streamlit as st
 
 # --- CONFIGURATION DE LA PAGE (MONO-PAGE) ---
-st.set_page_config(
-    page_title="Portfolio Pilot PEA", page_icon="📈", layout="wide"
-)
+st.set_page_config(page_title="Gestion PEA", page_icon="📈", layout="wide")
 
 SPREADSHEET_ID = "15ou0TCePSKfcbIuivkaGhq8voPzjR3ZudV0sARYwNjE"
 DB_NAME = "portfolio.db"
@@ -62,11 +60,26 @@ def load_data():
     if portefeuille.empty:
       raise Exception
   except Exception:
+    # Structure complète fidèle à votre capture d'écran
     portefeuille = pd.DataFrame({
         "Titre": ["EPA:AI", "EPA:EWLD", "EPA:FDJU", "EPA:RNO", "EPA:STLAP"],
-        "Montant brut": [1809.00, 501.48, 490.82, 470.05, 451.26],
-        "Plus/Moins-value (€)": [122.98, 18.51, -5.28, -21.62, -48.39],
-        "Performance (%)": ["+7,4%", "+3,9%", "-1,1%", "-4,4%", "-9,8%"],
+        "Montant brut": [
+            "1 809,00 €",
+            "501,48 €",
+            "490,82 €",
+            "470,05 €",
+            "451,26 €",
+        ],
+        "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
+        "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
+        "Plus-value": [
+            "122,98 €",
+            "18,51 €",
+            "-5,28 €",
+            "-21,62 €",
+            "-48,39 €",
+        ],
+        "Performance": ["7,4%", "3,9%", "-1,1%", "-4,4%", "-9,8%"],
     })
 
   try:
@@ -120,7 +133,7 @@ def load_data():
 portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
 
 # --- INTERFACE MONO-PAGE ---
-st.title("🚀 Portfolio Pilot PEA")
+st.title("🚀 Gestion PEA")
 st.markdown("Vue d'ensemble centralisée de vos investissements.")
 
 if st.button("🔄 Synchroniser avec le Google Sheet"):
@@ -137,8 +150,18 @@ col1, col2, col3 = st.columns(3)
 with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
-  st.metric(label="Évaluation Titres", value="3 722,61 €", delta="+66,20 €")
-  st.caption("Performance globale : +1,78%")  # Pourcentage en petit dessous
+  st.metric(
+      label="Évaluation Titres",
+      value="3 722,61 €",
+      delta="+66,20 €",
+      help="Performance globale en pourcentage",
+  )
+  st.metric(
+      label="Performance globale",
+      value="+1,78%",
+      delta="Positif",
+      delta_color="normal",
+  )
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
@@ -168,11 +191,6 @@ st.markdown("---")
 st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
   st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
-  # Ajout des indications de performance en petit dessous pour chaque ligne active
-  for index, row in portefeuille_df.iterrows():
-    titre = row.get("Titre", "Actif")
-    perf = row.get("Performance (%)", "N/C")
-    st.caption(f"🔹 **{titre}** — Performance enregistrée : `{perf}`")
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -185,11 +203,13 @@ else:
 st.markdown("---")
 
 # ==========================================
-# 3. ENREGISTREMENT D'UNE TRANSACTION (FORTENEO STARTER)
+# 3. ENREGISTREMENT D'UNE TRANSACTION OU VERSEMENT
 # ==========================================
 st.subheader("➕ 3. Enregistrement d'une Transaction (Fortuneo Starter)")
 
-tab1, tab2 = st.tabs(["🛒 Nouvel Achat", "📤 Vente de Titre"])
+tab1, tab2, tab3 = st.tabs(
+    ["🛒 Nouvel Achat", "📤 Vente de Titre", "💰 Versement Volontaire"]
+)
 
 with tab1:
   with st.form("form_achat"):
@@ -197,16 +217,22 @@ with tab1:
     with col_a:
       ticker = st.text_input("Ticker / Code ISIN", placeholder="ex: EPA:AI")
       quantite = st.number_input(
-          "Quantité", min_value=0.01, value=1.0, step=0.01
+          "Quantité", min_value=0.01, value=1.0, step=0.01, key="qte_achat"
       )
     with col_b:
       prix = st.number_input(
-          "Prix d'achat unitaire (€)", min_value=0.01, value=10.0, step=0.1
+          "Prix d'achat unitaire (€)",
+          min_value=0.01,
+          value=10.0,
+          step=0.1,
+          key="prix_achat",
       )
       ordre_gratuit_achat = st.checkbox(
-          "🎁 Utiliser l'ordre gratuit du mois (0 € de frais)"
+          "🎁 Utiliser l'ordre gratuit du mois (0 € de frais)",
+          key="gratuit_achat",
       )
 
+    # Calcul dynamique en temps réel pour l'info-bulle orange
     montant_brut = quantite * prix
     frais_estimes = calculer_frais_fortuneo(montant_brut, ordre_gratuit_achat)
     montant_total = montant_brut + frais_estimes
@@ -228,16 +254,22 @@ with tab2:
     with col_c:
       ticker_vente = st.text_input("Ticker à revendre", placeholder="ex: EPA:AI")
       qte_vente = st.number_input(
-          "Quantité à céder", min_value=0.01, value=1.0, step=0.01
+          "Quantité à céder", min_value=0.01, value=1.0, step=0.01, key="qte_vente"
       )
     with col_d:
       prix_vente = st.number_input(
-          "Prix de vente unitaire (€)", min_value=0.01, value=10.0, step=0.1
+          "Prix de vente unitaire (€)",
+          min_value=0.01,
+          value=10.0,
+          step=0.1,
+          key="prix_vente",
       )
       ordre_gratuit_vente = st.checkbox(
-          "🎁 Utiliser l'ordre gratuit pour cette vente (0 € de frais)"
+          "🎁 Utiliser l'ordre gratuit pour cette vente (0 € de frais)",
+          key="gratuit_vente",
       )
 
+    # Calcul dynamique en temps réel pour la vente
     montant_vente_brut = qte_vente * prix_vente
     frais_vente = calculer_frais_fortuneo(
         montant_vente_brut, ordre_gratuit_vente
@@ -256,6 +288,27 @@ with tab2:
           f" {frais_vente:.2f} € de frais."
       )
 
+with tab3:
+  with st.form("form_versement"):
+    montant_versement = st.number_input(
+        "Montant du versement volontaire (€)",
+        min_value=1.0,
+        value=100.0,
+        step=10.0,
+    )
+    date_versement = st.date_input("Date du versement")
+
+    st.info(
+        f"💰 **Nouveau Versement** — Un montant de **{montant_versement:.2f} €**"
+        f" sera ajouté à vos liquidités."
+    )
+
+    if st.form_submit_button("Valider le Versement"):
+      st.success(
+          f"Versement de {montant_versement:.2f} € enregistré avec succès !"
+          " Pensez à reporter l'information dans votre Google Sheet."
+      )
+
 st.markdown("---")
 
 # ==========================================
@@ -266,4 +319,3 @@ if not ordres_df.empty:
   st.dataframe(ordres_df, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucun ordre enregistré.")
-    
