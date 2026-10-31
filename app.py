@@ -71,20 +71,8 @@ def load_data():
         ],
         "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
         "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
-        "Plus-value (€)": [
-            122.98,
-            18.51,
-            -5.28,
-            -21.62,
-            -48.39,
-        ],  # Valeurs numériques pour coloration
-        "Performance (%)": [
-            "+7,4%",
-            "+3,9%",
-            "-1,1%",
-            "-4,4%",
-            "-9,8%",
-        ],
+        "Plus-value (€)": [122.98, 18.51, -5.28, -21.62, -48.39],
+        "Performance (%)": ["+7,4%", "+3,9%", "-1,1%", "-4,4%", "-9,8%"],
     })
 
   try:
@@ -141,9 +129,15 @@ portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
 # Fonction de coloration pour les tableaux
 def color_green_red_df(val):
   if isinstance(val, (int, float)):
-    color = "color: #2ea043; font-weight: bold;" if val >= 0 else "color: #da3633; font-weight: bold;"
-    return color
-  elif isinstance(val, str) and ("+" in val or (val.replace('.', '', 1).isdigit() and float(val) > 0)):
+    return (
+        "color: #2ea043; font-weight: bold;"
+        if val >= 0
+        else "color: #da3633; font-weight: bold;"
+    )
+  elif isinstance(val, str) and (
+      "+" in val
+      or (val.replace(".", "", 1).isdigit() and float(val) > 0)
+  ):
     return "color: #2ea043; font-weight: bold;"
   elif isinstance(val, str) and ("-" in val):
     return "color: #da3633; font-weight: bold;"
@@ -168,12 +162,13 @@ col1, col2, col3 = st.columns(3)
 with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
-  # Évaluation des titres avec les € et les deltas (€ et %) côte à côte en vert/rouge
-  st.metric(
-      label="Évaluation Titres",
-      value="3 722,61 €",
-      delta="+66,20 € (+1,78%)",
-  )
+  st.metric(label="Évaluation Titres", value="3 722,61 €")
+  # 2 infos-bulles séparées pour les € et les % sous l'évaluation
+  sub_col1, sub_col2 = st.columns(2)
+  with sub_col1:
+    st.metric(label="Plus-value (€)", value="+66,20 €")
+  with sub_col2:
+    st.metric(label="Performance (%)", value="+1,78%")
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
@@ -184,7 +179,6 @@ st.markdown("---")
 # ==========================================
 st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
-  # Application de la coloration sur les colonnes financières et performances
   styled_portefeuille = portefeuille_df.style.applymap(
       color_green_red_df, subset=["Plus-value (€)", "Performance (%)"]
   )
