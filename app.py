@@ -71,7 +71,7 @@ def load_data():
         ],
         "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
         "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
-        "Plus-value (€)": [122.98, 18.51, -5.28, -21.62, -48.39],
+        "Plus-value (€)": ["+122,98 €", "+18,51 €", "-5,28 €", "-21,62 €", "-48,39 €"],
         "Performance (%)": ["+7,4%", "+3,9%", "-1,1%", "-4,4%", "-9,8%"],
     })
 
@@ -115,7 +115,7 @@ def load_data():
             "EPA:RNO",
         ],
         "Qté": [12, 23, 109, 18, 10, 16],
-        "Plus value": [18.51, -5.28, -48.39, 37.70, 122.98, 65.09],
+        "Plus value": ["+18,51 €", "-5,28 €", "-48,39 €", "+37,70 €", "+122,98 €", "+65,09 €"],
         "Etat": ["Acheté", "Acheté", "Acheté", "Vendu", "Acheté", "Vendu"],
     })
 
@@ -124,24 +124,6 @@ def load_data():
 
 
 portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
-
-
-# Fonction de coloration pour les tableaux
-def color_green_red_df(val):
-  if isinstance(val, (int, float)):
-    return (
-        "color: #2ea043; font-weight: bold;"
-        if val >= 0
-        else "color: #da3633; font-weight: bold;"
-    )
-  elif isinstance(val, str) and (
-      "+" in val
-      or (val.replace(".", "", 1).isdigit() and float(val) > 0)
-  ):
-    return "color: #2ea043; font-weight: bold;"
-  elif isinstance(val, str) and ("-" in val):
-    return "color: #da3633; font-weight: bold;"
-  return ""
 
 
 # --- INTERFACE MONO-PAGE ---
@@ -163,12 +145,12 @@ with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
   st.metric(label="Évaluation Titres", value="3 722,61 €")
-  # 2 infos-bulles séparées pour les € et les % sous l'évaluation
-  sub_col1, sub_col2 = st.columns(2)
-  with sub_col1:
-    st.metric(label="Plus-value (€)", value="+66,20 €")
-  with sub_col2:
-    st.metric(label="Performance (%)", value="+1,78%")
+  # Utilisation de colonnes imbriquées pour séparer proprement les deux deltas en info-bulles
+  sub1, sub2 = st.columns(2)
+  with sub1:
+    st.metric(label="Plus-value", value="+66,20 €", delta="Positif")
+  with sub2:
+    st.metric(label="Performance", value="+1,78%", delta="Positif")
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
 
@@ -179,10 +161,7 @@ st.markdown("---")
 # ==========================================
 st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
-  styled_portefeuille = portefeuille_df.style.applymap(
-      color_green_red_df, subset=["Plus-value (€)", "Performance (%)"]
-  )
-  st.dataframe(styled_portefeuille, use_container_width=True, hide_index=True)
+  st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -313,7 +292,7 @@ else:
 st.markdown("---")
 
 # ==========================================
-# 5. GRAPHIQUES & RÉPARTITION (EN BAS)
+# 5. GRAPHIQUES & RÉPARTITION
 # ==========================================
 st.subheader("📈 5. Analyses & Répartition")
 col_g1, col_g2 = st.columns(2)
