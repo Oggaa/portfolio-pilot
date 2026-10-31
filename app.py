@@ -60,7 +60,6 @@ def load_data():
     if portefeuille.empty:
       raise Exception
   except Exception:
-    # Structure complète fidèle à votre capture d'écran
     portefeuille = pd.DataFrame({
         "Titre": ["EPA:AI", "EPA:EWLD", "EPA:FDJU", "EPA:RNO", "EPA:STLAP"],
         "Montant brut": [
@@ -72,14 +71,20 @@ def load_data():
         ],
         "Coût achat": ["167,25 €", "39,93 €", "21,41 €", "28,71 €", "4,55 €"],
         "Prix vente": ["180,90 €", "41,79 €", "21,34 €", "27,65 €", "4,14 €"],
-        "Plus-value": [
-            "122,98 €",
-            "18,51 €",
-            "-5,28 €",
-            "-21,62 €",
-            "-48,39 €",
+        "Plus-value (€)": [
+            122.98,
+            18.51,
+            -5.28,
+            -21.62,
+            -48.39,
+        ],  # Valeurs numériques pour coloration
+        "Performance (%)": [
+            "+7,4%",
+            "+3,9%",
+            "-1,1%",
+            "-4,4%",
+            "-9,8%",
         ],
-        "Performance": ["7,4%", "3,9%", "-1,1%", "-4,4%", "-9,8%"],
     })
 
   try:
@@ -132,6 +137,19 @@ def load_data():
 
 portefeuille_df, versements_df, ordres_df, tables_disponibles = load_data()
 
+
+# Fonction de coloration pour les tableaux
+def color_green_red_df(val):
+  if isinstance(val, (int, float)):
+    color = "color: #2ea043; font-weight: bold;" if val >= 0 else "color: #da3633; font-weight: bold;"
+    return color
+  elif isinstance(val, str) and ("+" in val or (val.replace('.', '', 1).isdigit() and float(val) > 0)):
+    return "color: #2ea043; font-weight: bold;"
+  elif isinstance(val, str) and ("-" in val):
+    return "color: #da3633; font-weight: bold;"
+  return ""
+
+
 # --- INTERFACE MONO-PAGE ---
 st.title("🚀 Gestion PEA")
 st.markdown("Vue d'ensemble centralisée de vos investissements.")
@@ -150,38 +168,14 @@ col1, col2, col3 = st.columns(3)
 with col1:
   st.metric(label="Capital Global", value="4 224,93 €", delta="+196,93 €")
 with col2:
+  # Évaluation des titres avec les € et les deltas (€ et %) côte à côte en vert/rouge
   st.metric(
       label="Évaluation Titres",
       value="3 722,61 €",
-      delta="+66,20 €",
-      help="Performance globale en pourcentage",
-  )
-  st.metric(
-      label="Performance globale",
-      value="+1,78%",
-      delta="Positif",
-      delta_color="normal",
+      delta="+66,20 € (+1,78%)",
   )
 with col3:
   st.metric(label="Liquidités Disponibles", value="502,32 €")
-
-col_g1, col_g2 = st.columns(2)
-with col_g1:
-  st.markdown("### ⚖️ Répartition Stratégique")
-  fig_pie = px.pie(
-      names=["Passif (ETF / Long Terme)", "Dynamique (Stock Picking)"],
-      values=[2300, 1422],
-      hole=0.4,
-      color_discrete_sequence=["#2ea043", "#1f6feb"],
-  )
-  st.plotly_chart(fig_pie, use_container_width=True)
-
-with col_g2:
-  st.markdown("### 📈 Tendance de la Valorisation")
-  fig_line = px.line(
-      title="Évolution du capital", labels={"x": "Période", "y": "Valeur (€)"}
-  )
-  st.plotly_chart(fig_line, use_container_width=True)
 
 st.markdown("---")
 
@@ -190,7 +184,11 @@ st.markdown("---")
 # ==========================================
 st.subheader("💼 2. Lignes Actives & Performance")
 if not portefeuille_df.empty:
-  st.dataframe(portefeuille_df, use_container_width=True, hide_index=True)
+  # Application de la coloration sur les colonnes financières et performances
+  styled_portefeuille = portefeuille_df.style.applymap(
+      color_green_red_df, subset=["Plus-value (€)", "Performance (%)"]
+  )
+  st.dataframe(styled_portefeuille, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucune ligne trouvée dans l'onglet Portefeuille.")
 
@@ -232,7 +230,6 @@ with tab1:
           key="gratuit_achat",
       )
 
-    # Calcul dynamique en temps réel pour l'info-bulle orange
     montant_brut = quantite * prix
     frais_estimes = calculer_frais_fortuneo(montant_brut, ordre_gratuit_achat)
     montant_total = montant_brut + frais_estimes
@@ -269,7 +266,6 @@ with tab2:
           key="gratuit_vente",
       )
 
-    # Calcul dynamique en temps réel pour la vente
     montant_vente_brut = qte_vente * prix_vente
     frais_vente = calculer_frais_fortuneo(
         montant_vente_brut, ordre_gratuit_vente
@@ -319,3 +315,27 @@ if not ordres_df.empty:
   st.dataframe(ordres_df, use_container_width=True, hide_index=True)
 else:
   st.warning("Aucun ordre enregistré.")
+
+st.markdown("---")
+
+# ==========================================
+# 5. GRAPHIQUES & RÉPARTITION (EN BAS)
+# ==========================================
+st.subheader("📈 5. Analyses & Répartition")
+col_g1, col_g2 = st.columns(2)
+with col_g1:
+  st.markdown("### ⚖️ Répartition Stratégique")
+  fig_pie = px.pie(
+      names=["Passif (ETF / Long Terme)", "Dynamique (Stock Picking)"],
+      values=[2300, 1422],
+      hole=0.4,
+      color_discrete_sequence=["#2ea043", "#1f6feb"],
+  )
+  st.plotly_chart(fig_pie, use_container_width=True)
+
+with col_g2:
+  st.markdown("### 📈 Tendance de la Valorisation")
+  fig_line = px.line(
+      title="Évolution du capital", labels={"x": "Période", "y": "Valeur (€)"}
+  )
+  st.plotly_chart(fig_line, use_container_width=True)
